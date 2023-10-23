@@ -22,11 +22,16 @@ library(kableExtra)
 library(dtplyr)
 library(dplyr)
 
+#library(readxl)
 ```
 
 
 ```{r}
+#hd <- read_excel(file.path("~", "Downloads","heart_disease_health_indicators_BRFSS2015.xlsx"))
 hd <- data.table::fread(file.path("~", "Downloads","heart_disease_health_indicators_BRFSS2015.csv"))
+
+hd
+
 ```
 
 
@@ -67,7 +72,9 @@ Take a look at non-binary variable and see that they are categorical, but need t
 ```
 Using ifelse statements to transform variables into new character variables instead of numerical values for clearer responses(values obtained for kaggle legend for data)
 Clean and resitrict data into new dataset "pred'
+
 ```{r}
+
 hd$HDorAttack <- ifelse(hd$HeartDiseaseorAttack==1,"Yes","No")
 hd$Gender <- ifelse(hd$Sex==1,"Male","Female")
 hd$HighBloodPressure<- ifelse(hd$HighBP==1,"Yes","No")
@@ -118,10 +125,8 @@ hd$Income_cat <- ifelse(hd$Income == 1,"Less than $10,000",
                                                               ifelse(hd$Income == 8,"$75,000 or more", NA
                       ))))))))
 
+hd
 
-
-
-#hd
 pred<- hd[,list(HDorAttack,Gender,agecat,BMI,Educ_lvl,Income_cat,HighBloodPressure,HighCholestrol,HadStroke,HasDiabetes,Smokes,Exercise,HeavyAlcoholuse,EatsVeggies,EatsFruits)]
 #pred
 
