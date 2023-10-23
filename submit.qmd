@@ -1,28 +1,442 @@
 ---
-title: ""
-author: ""
+title: "PM566 Midterm"
+author: "Jayson De La O"
 format:
   html:
     embed-resources: true
 ---
 
-## Quarto
-
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
-
 ```{r}
-1 + 1
+library(data.table)
+library(magrittr)
+library(dplyr)
+#library(leaflet)
+#library(tidyverse)
+#library(devtools)
+library(R.utils)
+#library(lubridate)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
 ```
 
-You can add options to executable code like this
 
 ```{r}
-#| echo: false
-2 * 2
+hd <- data.table::fread(file.path("~", "Downloads","heart_disease_health_indicators_BRFSS2015.csv"))
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+
+
+Which health indicator have a greater association with heart disease?
+
+INTRODUCTION:
+The Centers for Disease Control and Prevention (CDC) list heart disease as the leading cause of death in the United States. The goal of this analysis is to find out which health indicators are associated heart disease and will potentially be useful in predicting whether or not someone develop heart disease. Our dataset is a subset of data collected from the CDC's 2015-Behavioral Risk Factor Surveillance System (BRFSS), a telephone survey used to collect data on the health and condition of the residents of the United States of America. The data contains the binary outcome of heart disease or heart attack status along with different health indicators that could be useful in predicting heart disease, such as BMI, smoking status, and age. Most of the health indicator variables have binary responses to a health status or condition, with BMI being the quantitative variable in the data.
+
+METHODS:
+The dataset was obtained from Kaggle and it is a subset of data from the 2015 CDC's telephone survey across the 50 states. The dataset used only includes health indicators that might be useful for predicting heart disease status across the nation. The dataset was downloaded and read in as a CSV file and the dimensions, header, and footer were all checked to ensure the data was properly displaying. The str function was used to look at the structure of the data and see that all of variables are numerical values. The summary function allows us to take a closer look at the variables and see the summary statistics of each variable and any missing values that might occur in the data. No missing values are observed and most variable are binary-categorical variables. All numerical-categorical variables are transformed using ifelse statements to their corresponding category using the Kaggle legend to make the responses more intuitive. The clean dataset was then restricted to variables that would seem to have an association including the new character variables and BMI(duplicates were removed).
+Exploratory data analysis was run on variables of interest and it is noted that BMI has a max of 98. A BMI of 98 seems to be a suspicious value because most BMI charts only list 30 and above as the highest BMI category. Using medical journals, I was able to verify that BMI values can exceed 100, but the majority of people do not fall into that category. Additionally, I calculated the proportion of individuals that had a BMI greater than 40 in our dataset was 4% and those greater than 50 was 0.8%, so it seems to be reasonable that these BMI values are not errors and will be included in our analysis. Exploratory graphs were created for variables of interest using ggplot and summary tables were created using summarize and kable function.
+
+
+
+
+Dimensions of dataset: 253680 x 22
+Header/Footer data is displaying correctly
+All variable types are numerical 
+Summary tells us dataset is well-maintained; no missing values 
+BMI max is 98,which is questionable
+```{r}
+#dim(hd)
+#head(hd)
+#tail(hd)
+#str(hd)
+#summary(hd)
+
+```
+
+Take a look at non-binary variable and see that they are categorical, but need to use Kaggle legend to transform into corresponding catagories
+```{r}
+
+#table(hd$Age)
+#table(hd$Education)
+#table(hd$Income)
+#table(hd$Diabetes)
+```
+Using ifelse statements to transform variables into new character variables instead of numerical values for clearer responses(values obtained for kaggle legend for data)
+Clean and resitrict data into new dataset "pred'
+```{r}
+hd$HDorAttack <- ifelse(hd$HeartDiseaseorAttack==1,"Yes","No")
+hd$Gender <- ifelse(hd$Sex==1,"Male","Female")
+hd$HighBloodPressure<- ifelse(hd$HighBP==1,"Yes","No")
+hd$HighCholestrol<- ifelse(hd$HighChol==1,"Yes","No")
+hd$HadStroke<- ifelse(hd$Stroke==1,"Yes","No")
+hd$Smokes<- ifelse(hd$Smoker==1,"Yes","No")
+hd$Exercise<- ifelse(hd$PhysActivity==1,"Yes","No")
+hd$HeavyAlcoholuse<- ifelse(hd$HvyAlcoholConsump==1,"Yes","No")
+hd$EatsVeggies<- ifelse(hd$Veggies==1,"Yes","No")
+hd$EatsFruits<- ifelse(hd$Fruits==1,"Yes","No")
+
+
+hd$agecat <- ifelse(hd$Age == 1,"Age 18 to 24",
+                    ifelse(hd$Age == 2,"Age 25 to 29",
+                           ifelse(hd$Age == 3,"Age 30 to 34",
+                                  ifelse(hd$Age == 4,"Age 35 to 39",
+                                         ifelse(hd$Age == 5,"Age 40 to 44",
+                                                ifelse(hd$Age == 6,"Age 45 to 49",
+                                                       ifelse(hd$Age == 7,"Age 50 to 54",
+                                                              ifelse(hd$Age == 8,"Age 55 to 59", 
+                                                                     ifelse(hd$Age == 9,"Age 60 to 64",
+                                                                            ifelse(hd$Age == 10,"Age 65 to 69",
+                                                                                   ifelse(hd$Age == 11,"Age 70 to 74",
+                                                                                          ifelse(hd$Age == 12,"Age 75 to 79",
+                                                                                                 ifelse(hd$Age == 13,"Age 80 or older",NA)))))))))))))
+
+hd$Educ_lvl <- ifelse(hd$Education == 1,"No school",
+                    ifelse(hd$Education == 2,"Elementary",
+                           ifelse(hd$Education == 3,"Some High School",
+                                  ifelse(hd$Education == 4,"High School",
+                                         ifelse(hd$Education == 5,"Some college",
+                                                ifelse(hd$Education == 6,"College graduate",
+                                                      NA
+                      ))))))
+
+hd$HasDiabetes <- ifelse(hd$Diabetes == 0,"No Diabetes",
+                    ifelse(hd$Diabetes == 1,"Pre-diabetes or borderline diabetes",
+                           ifelse(hd$Diabetes == 2,"Diabetes",NA
+                      )))
+
+hd$Income_cat <- ifelse(hd$Income == 1,"Less than $10,000",
+                    ifelse(hd$Income == 2,"Less than $15,000",
+                           ifelse(hd$Income == 3,"Less than $20,000",
+                                  ifelse(hd$Income == 4,"Less than $25,000",
+                                         ifelse(hd$Income == 5,"Less than $35,000",
+                                                ifelse(hd$Income == 6,"Less than $50,000",
+                                                       ifelse(hd$Income == 7,"Less than $75,000",
+                                                              ifelse(hd$Income == 8,"$75,000 or more", NA
+                      ))))))))
+
+
+
+
+#hd
+pred<- hd[,list(HDorAttack,Gender,agecat,BMI,Educ_lvl,Income_cat,HighBloodPressure,HighCholestrol,HadStroke,HasDiabetes,Smokes,Exercise,HeavyAlcoholuse,EatsVeggies,EatsFruits)]
+#pred
+
+```
+Exploratory Analysis
+
+BMI values greater than 40 seem suspicious, but have been externally validated to exist
+only 4% of our dataset has BMI greater than 40 and only 0.8% are greater than 50. 
+```{r,results='asis'}
+great <- hd[BMI >40,]
+gr <- hd[BMI >50,]
+
+P<- pred %>% summarize(
+  
+proportion_of_BMI_greater40 = length(great$BMI)/length(pred$BMI),
+proportion_of_BMI_greater50 = length(gr$BMI)/length(pred$BMI)
+)
+
+P %>%
+  knitr::kable(caption="BMI proportions") %>%
+  kableExtra::kable_styling(bootstrap_options="striped",full_width=FALSE)
+
+
+```
+ Taking a look at the distribution of our variables.
+ 
+These plots shows the distributions of the variables showing the range of the different responses in each variable.
+
+```{r}
+barplot(table(pred$HDorAttack),main="Barplot of Heart Disease/Heart Attack",col=table(pred$HDorAttack))
+
+hist(pred$BMI,main="Histogram of BMI",col="purple")
+boxplot(pred$BMI, col="green",main="Boxplot of BMI")
+
+
+barplot(table(pred$agecat),main="Barplot of Age Categories",col=table(pred$agecat))
+barplot(table(pred$Gender),main="Barplot of Gender",col=table(pred$Gender))
+barplot(table(pred$Educ_lvl),main="Barplot of Education Level",col=table(pred$Educ_lvl))
+barplot(table(pred$Income_cat),main="Barplot of Income",col=table(pred$Income_cat))
+barplot(table(pred$HighBloodPressure),main="Barplot of Blood Pressure",col=table(pred$HighBloodPressure))
+barplot(table(pred$HighCholestrol),main="Barplot of Cholestrol",col=table(pred$HighCholestrol))
+barplot(table(pred$HadStroke),main="Barplot of Stroke Status",col=table(pred$HadStroke))
+barplot(table(pred$HasDiabetes),main="Barplot of Diabetes Status",col=table(pred$HasDiabetes))
+barplot(table(pred$Smokes),main="Barplot of Smoking Status",col=table(pred$Smokes))
+barplot(table(pred$Exercise),main="Barplot of Exercise Status",col=table(pred$Exercise))
+barplot(table(pred$HeavyAlcoholuse),main="Barplot of Heavy Alcohol Use Status",col=table(pred$HeavyAlcoholuse))
+barplot(table(pred$EatsVeggies),main="Barplot of individuals who eat Vegetables",col=table(pred$EatsVeggies))
+barplot(table(pred$EatsFruits),main="Barplot of individuals who eat Fruits",col=table(pred$EatsFruits))
+```
+
+Data Visualization
+
+The histogram, violin plot, and boxplot show how BMI is distributed between Heart disease status. The mean BMI for individuals with heart disease is higher than those without, showing there is a possible association. The scatterplot shows us that the sample size for heart disease status group is not the same so results maybe be skewed. The mean and sample size for each group is show in the table below, which confirms my conclusion. 
+```{r}
+ggplot(pred,aes(x=BMI,fill=HDorAttack))+
+  geom_histogram()+
+  facet_wrap(~HDorAttack,nrow=2) +
+  labs(x="BMI",title="Histogram of BMI by Heart Disease Status")
+
+ggplot(pred, aes(x = HDorAttack, y = BMI,fill=HDorAttack)) +
+  geom_violin()+
+  labs(x="Heart Disease Status",y="BMI",title="Violin map of BMI by Heart Disease Status")
+
+ggplot(pred, aes(x=HDorAttack,y=BMI,fill=HDorAttack))+
+  geom_boxplot()+
+  labs(x="Heart Disease Status",y="BMI",title="Boxplot of BMI by Heart Disease Status")
+
+
+
+ggplot(pred, aes(x=HDorAttack,y=BMI,color=HDorAttack))+
+  geom_jitter()+
+  labs(x="Heart Disease Status",y="BMI",title="Scatterplott of BMI by Heart Disease Status")
+```
+```{r}
+stats <- pred %>%
+  group_by(HDorAttack) %>%
+  summarize(
+    n=n(),
+    BMI_mean=mean(BMI)
+   
+  )
+stats %>%
+  knitr::kable(caption="Table 1:Summary Statistics") %>%
+  kableExtra::kable_styling(bootstrap_options="striped",full_width=FALSE)
+```
+ 
+The barplot show how Age is distributed between Heart disease status. The heart disease increases with age showing that there might be an association between age and heart disease. The table below also shows that as age increases the proprtion in each age categories who have heart disease increases.
+
+```{r}
+ggplot(pred, aes(x = agecat, colour=HDorAttack,fill = HDorAttack)) +
+  geom_bar() +
+  labs(x = "Age Category", y = "Count",title="Barplot of Age Category by Heart Disease status") 
+```
+```{r}
+
+
+proportions_agecat <-  prop.table(table(pred$HDorAttack, pred$agecat), margin = 2)
+
+
+
+proportions_agecat %>%
+  knitr::kable(caption="Proportion of Heart Disease by each Age Category") %>%
+  kableExtra::kable_styling(bootstrap_options="striped",full_width=FALSE)
+
+ 
+
+```
+
+
+The barplot show how gender is distributed between Heart disease status. The heart disease rates are higher for male than female showing that there might be an association between gender and heart disease. The table below also shows that as males are at an increased risk for heart disease.
+```{r}
+ggplot(pred, aes(x = Gender, colour=HDorAttack,fill = HDorAttack)) +
+  geom_bar(position = "dodge",stat="count") +
+  labs(x = "Gender", y = "Count",title="Barplot of Gender by Heart Disease status") 
+```
+```{r}
+proportions_gender <-  prop.table(table(pred$HDorAttack, pred$Gender), margin = 2)
+
+
+
+proportions_gender %>%
+  knitr::kable(caption="Proportion of Heart Disease by Gender") %>%
+  kableExtra::kable_styling(bootstrap_options="striped",full_width=FALSE)
+```
+
+
+The barplot show how Education level is distributed between Heart disease status. The heart disease status seems to be less prevalent in individuals with college degrees, but the effect does not seem to be as impactful in the No school/Elementary school categories showing that there might be an association between increased education level and heart disease. The table below also shows that for the most part as education increases the proportion heart disease decreases.
+```{r}
+ggplot(pred, aes(x = Educ_lvl, colour=HDorAttack,fill = HDorAttack)) +
+  geom_bar(position = "dodge",stat="count") +
+  labs(x = "Education Level", y = "Count",title="Barplot of Education Level by Heart Disease status") 
+  
+```
+```{r}
+proportions_educ <-  prop.table(table(pred$HDorAttack, pred$Educ_lvl), margin = 2)
+
+
+
+proportions_educ %>%
+  knitr::kable(caption="Proportion of Heart Disease by Education Level") %>%
+  kableExtra::kable_styling(bootstrap_options="striped",full_width=FALSE)
+```
+
+The barplot show how income level is distributed between Heart disease status. The heart disease status seems to be less prevalent in individuals with higher incomes, but the effect does not seem to be as impactful in the lower income categories showing that there might be an association between increased income level and heart disease. The table below also shows that for the most part as income increases the proportion heart disease decreases.
+
+```{r}
+ggplot(pred, aes(x = Income_cat, colour=HDorAttack,fill = HDorAttack)) +
+  geom_bar(position = "dodge",stat="count") +
+  labs(x = "Income Category", y = "Count",title="Barplot of Income Category by Heart Disease status") 
+  
+```
+```{r}
+proportions_Income <-  prop.table(table(pred$HDorAttack, pred$Income_cat), margin = 2)
+
+
+
+proportions_Income %>%
+  knitr::kable(caption="Proportion of Heart Disease by Income") %>%
+  kableExtra::kable_styling(bootstrap_options="striped",full_width=FALSE)
+```
+
+The barplot show how blood pressure level is distributed between Heart disease status. The heart disease seems to be less prevalent in individuals without high blood pressure showing that there might be an association between increased high blood pressure level and heart disease. The table below also shows that for the proportion of individuals with heart disease also had high blood pressure.
+
+```{r}
+ggplot(pred, aes(x = HighBloodPressure, colour=HDorAttack,fill = HDorAttack)) +
+  geom_bar(position = "dodge",stat="count") +
+  labs(x = "High Blood Pressure Status", y = "Count",title="Barplot of High Blood Pressure Status by Heart Disease status") 
+  
+```
+```{r}
+proportions_bp <-  prop.table(table(pred$HDorAttack, pred$HighBloodPressure), margin = 2)
+
+
+
+proportions_bp %>%
+  knitr::kable(caption="Proportion of Heart Disease by Gender") %>%
+  kableExtra::kable_styling(bootstrap_options="striped",full_width=FALSE)
+```
+
+The barplot show how cholesterol level is distributed between Heart disease status. The heart disease seems to be less prevalent in individuals without high cholesterol showing that there might be an association between increased high cholesterol levels and heart disease. The table below also shows that for the proportion of individuals with heart disease also had high blood cholestrol.
+```{r}
+ggplot(pred, aes(x = HighCholestrol, colour=HDorAttack,fill = HDorAttack)) +
+  geom_bar(position = "dodge",stat="count") +
+  labs(x = "High Cholestrol Status", y = "Count",title="Barplot of High Cholestrol Status by Heart Disease status") 
+```
+```{r}
+proportions_HC <-  prop.table(table(pred$HDorAttack, pred$HighCholestrol), margin = 2)
+
+
+
+proportions_HC %>%
+  knitr::kable(caption="Proportion of Heart Disease by High Cholestrol") %>%
+  kableExtra::kable_styling(bootstrap_options="striped",full_width=FALSE)
+```
+
+The barplot show how stroke status is distributed between Heart disease status. The heart disease seems to be less prevalent in individuals without a stroke showing that there might be an association between strokes and heart disease. The table below also shows that for the proportion of individuals with heart disease also had a stroke.
+
+```{r}
+ggplot(pred, aes(x = HadStroke, colour=HDorAttack,fill = HDorAttack)) +
+  geom_bar(position = "dodge",stat="count") +
+  labs(x = "Stroke Status", y = "Count",title="Barplot of Stroke Status by Heart Disease status") 
+  
+```
+```{r}
+proportions_stroke <-  prop.table(table(pred$HDorAttack, pred$HadStroke), margin = 2)
+
+
+
+proportions_stroke %>%
+  knitr::kable(caption="Proportion of Heart Disease by Stroke Status") %>%
+  kableExtra::kable_styling(bootstrap_options="striped",full_width=FALSE)
+```
+The barplot show how smoking status is distributed between Heart disease status. The heart disease seems to be less prevalent in individuals who do not smoke showing that there might be an association between smoking and heart disease. The table below also shows that for the proportion of individuals with heart disease also were smokers.
+
+```{r}
+ggplot(pred, aes(x = Smokes, colour=HDorAttack,fill = HDorAttack)) +
+  geom_bar(position = "dodge",stat="count") +
+  labs(x = "Smoking Status", y = "Count",title="Barplot of Smoking Status by Heart Disease status") 
+  
+  
+```
+```{r}
+proportions_smoke <-  prop.table(table(pred$HDorAttack, pred$Smokes), margin = 2)
+
+
+
+proportions_smoke %>%
+  knitr::kable(caption="Proportion of Heart Disease by Smoking status") %>%
+  kableExtra::kable_styling(bootstrap_options="striped",full_width=FALSE)
+```
+
+The barplot show how exercise status is distributed between Heart disease status. The heart disease seems to be less prevalent in individuals who exercise showing that there might be an association between exercising and heart disease. The table below also shows that for the proportion of individuals with heart disease also were not exercising.
+```{r}
+ggplot(pred, aes(x = Exercise, colour=HDorAttack,fill = HDorAttack)) +
+  geom_bar(position = "dodge",stat="count") +
+  labs(x = "Excercise Status", y = "Count",title="Barplot of Exercise Status by Heart Disease status") 
+  
+```
+```{r}
+proportions_exercise <-  prop.table(table(pred$HDorAttack, pred$Exercise), margin = 2)
+
+
+
+proportions_exercise %>%
+  knitr::kable(caption="Proportion of Heart Disease by Exercise status") %>%
+  kableExtra::kable_styling(bootstrap_options="striped",full_width=FALSE)
+```
+
+
+The barplot show how heavy alcohol use status is distributed between Heart disease status. The heart disease seems to be more prevalent in individuals who do not drink showing that there might be an association between heavy alcohol use and heart disease. The table below also shows that for the proportion of individuals with heart disease also were also not drinkers, but this could be caused by low sample size in heavy drinker category.
+```{r}
+ggplot(pred, aes(x = HeavyAlcoholuse, colour=HDorAttack,fill = HDorAttack)) +
+  geom_bar(position = "dodge",stat="count") +
+  labs(x = "High Alcohol Use Status", y = "Count",title="Barplot of High Alcohol use Status by Heart Disease status") 
+  
+```
+```{r}
+proportions_alc <-  prop.table(table(pred$HDorAttack, pred$HeavyAlcoholuse), margin = 2)
+
+
+
+proportions_alc %>%
+  knitr::kable(caption="Proportion of Heart Disease by Heavy Alocohol Use") %>%
+  kableExtra::kable_styling(bootstrap_options="striped",full_width=FALSE)
+```
+
+The barplot show how fruit eating status is distributed between Heart disease status. The heart disease seems to be less prevalent in individuals who eat fruit showing that there might be an association between eating fruit and heart disease. The table below also shows that for the proportion of individuals with heart disease also were not eating fruit.
+```{r}
+ggplot(pred, aes(x = EatsFruits, colour=HDorAttack,fill = HDorAttack)) +
+  geom_bar(position = "dodge",stat="count") +
+  labs(x = "Eats fruits Status", y = "Count",title="Barplot of Eats fruits Status by Heart Disease status") 
+  
+```
+```{r}
+proportions_fruit <-  prop.table(table(pred$HDorAttack, pred$EatsFruits), margin = 2)
+
+
+
+proportions_fruit %>%
+  knitr::kable(caption="Proportion of Heart Disease by if they eat fruit") %>%
+  kableExtra::kable_styling(bootstrap_options="striped",full_width=FALSE)
+```
+
+The barplot show how vegetable eating status is distributed between Heart disease status. The heart disease seems to be less prevalent in individuals who eat vegetables showing that there might be an association between eating vegtebales and heart disease. The table below also shows that for the proportion of individuals with heart disease also were not eating vegetables.
+```{r}
+ggplot(pred, aes(x = EatsVeggies, colour=HDorAttack,fill = HDorAttack)) +
+  geom_bar(position = "dodge",stat="count") +
+  labs(x = "Eats Vegetables Status", y = "Count",title="Barplot of Eats Vegetables Status by Heart Disease status") 
+
+```
+```{r}
+proportions_veg <-  prop.table(table(pred$HDorAttack, pred$EatsVeggies), margin = 2)
+
+
+
+proportions_veg %>%
+  knitr::kable(caption="Proportion of Heart Disease by if they eat vegetables ") %>%
+  kableExtra::kable_styling(bootstrap_options="striped",full_width=FALSE)
+```
+
+The barplot show how diabetes status is distributed between Heart disease status. The heart disease seems to be less prevalent in individuals who do not have diabetes or are bordline showing that there might be an association between diabetes and heart disease. The table below also shows that for the proportion of individuals with heart disease also were diabetic.
+```{r}
+
+ggplot(pred, aes(x = HasDiabetes, colour=HDorAttack,fill = HDorAttack)) +
+  geom_bar(position = "dodge",stat="count") +
+  labs(x = "Diabetes Status", y = "Count",title="Barplot of Diabetes Status by Heart Disease status")
+
+
+```
+```{r}
+proportions_diabetes <-  prop.table(table(pred$HDorAttack, pred$HasDiabetes), margin = 2)
+
+
+
+proportions_diabetes %>%
+  knitr::kable(caption="Proportion of Heart Disease by Diabetes status") %>%
+  kableExtra::kable_styling(bootstrap_options="striped",full_width=FALSE)
+```
+
+CONCLUSION:
+As we expected the health indicators seemed to be associated with heart disease. For the most part all the variables that seem to put you in a healthier category showed a decrease in heart disease. Although, the data did seem to have an exception were we show that an increase in heavy use of alcohol showed a decrease in heart diease, but this trend need more research because the data might have been skewed due to small sample size in the heavy use alcohol category.
+
